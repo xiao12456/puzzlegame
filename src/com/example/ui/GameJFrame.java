@@ -1,11 +1,15 @@
 package com.example.ui;
 
+import cn.hutool.core.io.IoUtil;
+import com.example.domain.GameInfo;
+
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.*;
 import java.util.Random;
 
 public class GameJFrame extends JFrame implements KeyListener, ActionListener {
@@ -41,6 +45,21 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
     JMenuItem replayItem = new JMenuItem("重新游戏");
     JMenuItem reLoginItem = new JMenuItem("重新登录");
     JMenuItem closeItem = new JMenuItem("关闭游戏");
+
+    JMenu saveJMenu = new JMenu("存档");
+    JMenu loadJMenu = new JMenu("读档");
+
+    JMenuItem saveItem0 = new JMenuItem("存档0(空)");
+    JMenuItem saveItem1 = new JMenuItem("存档1(空)");
+    JMenuItem saveItem2 = new JMenuItem("存档2(空)");
+    JMenuItem saveItem3 = new JMenuItem("存档3(空)");
+    JMenuItem saveItem4 = new JMenuItem("存档4(空)");
+
+    JMenuItem loadItem0 = new JMenuItem("读档0(空)");
+    JMenuItem loadItem1 = new JMenuItem("读档1(空)");
+    JMenuItem loadItem2 = new JMenuItem("读档2(空)");
+    JMenuItem loadItem3 = new JMenuItem("读档3(空)");
+    JMenuItem loadItem4 = new JMenuItem("读档4(空)");
 
     JMenuItem accountItem = new JMenuItem("公众号");
 
@@ -136,6 +155,21 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
 
         JMenu changeImage = new JMenu("更换图片");
 
+
+        // 把5个存档，添加到saveJMenu中
+        saveJMenu.add(saveItem0);
+        saveJMenu.add(saveItem1);
+        saveJMenu.add(saveItem2);
+        saveJMenu.add(saveItem3);
+        saveJMenu.add(saveItem4);
+
+        // 把5个读档，添加到loadJMenu中
+        loadJMenu.add(loadItem0);
+        loadJMenu.add(loadItem1);
+        loadJMenu.add(loadItem2);
+        loadJMenu.add(loadItem3);
+        loadJMenu.add(loadItem4);
+
         JMenu aboutJMenu = new JMenu("关于我们");
 
         // 把美女，动物，运动添加到更换图片当中
@@ -148,6 +182,8 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
         functionJMenu.add(replayItem);
         functionJMenu.add(reLoginItem);
         functionJMenu.add(closeItem);
+        functionJMenu.add(saveJMenu);
+        functionJMenu.add(loadJMenu);
 
         aboutJMenu.add(accountItem);
 
@@ -163,12 +199,54 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
 
         accountItem.addActionListener(this);
 
+        saveItem0.addActionListener(this);
+        saveItem1.addActionListener(this);
+        saveItem2.addActionListener(this);
+        saveItem3.addActionListener(this);
+        saveItem4.addActionListener(this);
+        loadItem0.addActionListener(this);
+        loadItem1.addActionListener(this);
+        loadItem2.addActionListener(this);
+        loadItem3.addActionListener(this);
+        loadItem4.addActionListener(this);
+
         // 将菜单里面的两个选项添加到菜单当中
         jMenuBar.add(functionJMenu);
         jMenuBar.add(aboutJMenu);
 
+        getGameInfo();
+
         // 给整个界面设置菜单
         this.setJMenuBar(jMenuBar);
+    }
+
+    /**
+     * 获取游戏存档信息并更新菜单项显示
+     */
+    public void getGameInfo() {
+        File file = new File("save");
+        File[] files = file.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File f : files) {
+            GameInfo gi = null;
+            try {
+                ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
+                gi = (GameInfo) ois.readObject();
+                ois.close();
+            } catch (IOException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            int step = gi.getStep();
+
+            String name = f.getName();
+            int index = name.charAt(4) - '0';
+
+            saveJMenu.getItem(index).setText("存档" + index + "(" + step + "步)");
+            loadJMenu.getItem(index).setText("存档" + index + "(" + step + "步)");
+        }
     }
 
     /**
@@ -373,6 +451,43 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
         } else if (obj == sport) {
             path = "image\\sport\\sport" + (new Random().nextInt(10) + 1) + "\\";
             initData();
+            initImage();
+        } else if (obj == saveItem0 || obj == saveItem1 || obj == saveItem2 || obj == saveItem3 || obj == saveItem4) {
+            JMenuItem item = (JMenuItem) obj;
+            String str = item.getText();
+            int index = str.charAt(2) - '0';
+
+            try {
+                ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("save\\save" + index + ".data"));
+                GameInfo gi = new GameInfo(data, x, y, path, step);
+                IoUtil.writeObj(oos, true, gi);
+
+                item.setText("存档" + index + "(" + step + "步)");
+                loadJMenu.getItem(index).setText("存档" + index + "(" + step + "步)");
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+
+        } else if (obj == loadItem0 || obj == loadItem1 || obj == loadItem2 || obj == loadItem3 || obj == loadItem4) {
+            JMenuItem item = (JMenuItem) obj;
+            String str = item.getText();
+            int index = str.charAt(2) - '0';
+
+            GameInfo gi = null;
+            try {
+                ObjectInputStream ois = new ObjectInputStream(new FileInputStream("save\\save" + index + ".data"));
+                gi = (GameInfo) ois.readObject();
+                ois.close();
+            } catch (IOException | ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            data = gi.getData();
+            step = gi.getStep();
+            path = gi.getPath();
+            x = gi.getX();
+            y = gi.getY();
+
             initImage();
         }
     }

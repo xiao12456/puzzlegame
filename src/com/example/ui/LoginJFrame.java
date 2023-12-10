@@ -1,5 +1,6 @@
 package com.example.ui;
 
+import cn.hutool.core.io.FileUtil;
 import com.example.domain.User;
 import com.example.util.CodeUtil;
 
@@ -7,14 +8,11 @@ import javax.swing.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
+import java.util.List;
 
 public class LoginJFrame extends JFrame implements MouseListener {
 
     static ArrayList<User> allUsers = new ArrayList<>();
-
-    static {
-        allUsers.add(new User("zhangsan", "123456"));
-    }
 
     JButton login = new JButton();
     JButton register = new JButton();
@@ -26,13 +24,32 @@ public class LoginJFrame extends JFrame implements MouseListener {
     // 正确的验证码
     JLabel rightCode = new JLabel();
 
+    // 错误次数
+    int errorCount = 0;
+
     public LoginJFrame() {
+        readUserInfo();
         initJFrame();
 
         initView();
 
         // 让当前页面显示出来
         this.setVisible(true);
+    }
+
+    /**
+     * 从 "userinfo.txt" 文件读取用户信息，并解析成 User 对象，然后添加到 allUsers 列表中。
+     */
+    private void readUserInfo() {
+        List<String> userInfoStrList = FileUtil.readUtf8Lines("userinfo.txt");
+        for (String str : userInfoStrList) {
+            String[] userInfoArr = str.split("&");
+            String[] arr1 = userInfoArr[0].split("=");
+            String[] arr2 = userInfoArr[1].split("=");
+            String[] arr3 = userInfoArr[2].split("=");
+            User u = new User(arr1[1], arr2[1], Integer.parseInt(arr3[1]));
+            allUsers.add(u);
+        }
     }
 
     /**
@@ -137,7 +154,7 @@ public class LoginJFrame extends JFrame implements MouseListener {
             String codeInput = this.code.getText();
 
             // 创建一个User对象
-            User userInfo = new User(usernameInput, passwordInput);
+            User userInfo = new User(usernameInput, passwordInput, 0);
 
             if (codeInput.isEmpty()) {
                 showJDialog("验证码不能为空");
@@ -153,14 +170,43 @@ public class LoginJFrame extends JFrame implements MouseListener {
                 // 需要把当前登录的用户名传递给游戏界面
                 new GameJFrame();
             } else {
-                showJDialog("用户名或密码错误");
+                if (!containsUsername(usernameInput)) {
+                    showJDialog("用户名不存在");
+                    return;
+                }
+
+                if (errorCount < 3) {
+                    showJDialog("用户名或密码错误，您还有" + (3 - errorCount) + "次机会");
+                } else {
+                    showJDialog("你的账户已锁定");
+                }
             }
         } else if (e.getSource() == register) {
-            System.out.println("点击了注册按钮");
+            this.setVisible(false);
+            new RegisterJFrame(allUsers);
         } else if (e.getSource() == rightCode) {
             String code = CodeUtil.getCode();
             rightCode.setText(code);
         }
+    }
+
+    /**
+     * 检查是否包含指定用户名的用户，并更新错误计数
+     *
+     * @param username 要检查的用户名
+     * @return 如果包含指定用户名的用户则返回true，否则返回false
+     */
+    public boolean containsUsername(String username) {
+        for (User u : allUsers) {
+            if (u.getUsername().equals(username)) {
+                errorCount = u.getCount();
+                ++errorCount;
+                u.setCount(errorCount);
+                FileUtil.writeLines(allUsers, "userinfo.txt", "UTF-8");
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -171,8 +217,10 @@ public class LoginJFrame extends JFrame implements MouseListener {
      */
     private boolean contains(User userInput) {
         for (User rightUser : allUsers) {
-            if (userInput.getUsername().equals(rightUser.getUsername()) && userInput.getPassword().equals(rightUser.getPassword())) {
+            if (userInput.getUsername().equals(rightUser.getUsername()) && userInput.getPassword().equals(rightUser.getPassword()) && rightUser.getCount() < 3) {
                 // 有相同的代表存在，返回true，后面的不需要再比了
+                rightUser.setCount(0);
+                FileUtil.writeLines(allUsers, "userinfo.txt", "UTF-8");
                 return true;
             }
         }
@@ -180,6 +228,11 @@ public class LoginJFrame extends JFrame implements MouseListener {
         return false;
     }
 
+    /**
+     * 显示一个带有指定内容的弹窗。
+     *
+     * @param content 弹窗中要显示的文本内容
+     */
     private void showJDialog(String content) {
         // 创建一个弹窗对象
         JDialog jDialog = new JDialog();
