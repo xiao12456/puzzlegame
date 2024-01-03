@@ -10,6 +10,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
+import java.util.Properties;
 import java.util.Random;
 
 public class GameJFrame extends JFrame implements KeyListener, ActionListener {
@@ -420,12 +421,22 @@ public class GameJFrame extends JFrame implements KeyListener, ActionListener {
             // 直接关闭虚拟机即可
             System.exit(0);
         } else if (obj == accountItem) {
-            System.out.println("公众号");
+
+            Properties prop = new Properties();
+            try {
+                FileInputStream fis=new FileInputStream("game.properties");
+                prop.load(fis);
+                fis.close();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            String path = (String) prop.get("account");
 
             // 创建一个弹窗对象
             JDialog jDialog = new JDialog();
             // 创建一个管理图片的容器对象JLabel
-            JLabel jLabel = new JLabel(new ImageIcon("image\\about.png"));
+            JLabel jLabel = new JLabel(new ImageIcon(path));
             // 设置位置和宽高
             jLabel.setBounds(0, 0, 258, 258);
             // 将图片添加到弹框当中
